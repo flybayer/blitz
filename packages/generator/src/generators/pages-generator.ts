@@ -1,7 +1,8 @@
 import {Generator, GeneratorOptions} from "../generator"
 import {join} from "path"
+import {camelCaseToKebabCase} from "../utils/kebab-case"
 
-export interface FormGeneratorOptions extends GeneratorOptions {
+export interface PagesGeneratorOptions extends GeneratorOptions {
   ModelName: string
   ModelNames: string
   modelName: string
@@ -12,8 +13,8 @@ export interface FormGeneratorOptions extends GeneratorOptions {
   ParentModels?: string
 }
 
-export class FormGenerator extends Generator<FormGeneratorOptions> {
-  sourceRoot = join(__dirname, "./templates/form")
+export class PagesGenerator extends Generator<PagesGeneratorOptions> {
+  sourceRoot = join(__dirname, "./templates/pages")
 
   private getId(input: string = "") {
     if (!input) return input
@@ -40,11 +41,23 @@ export class FormGenerator extends Generator<FormGeneratorOptions> {
       modelNames: this.options.modelNames,
       ModelName: this.options.ModelName,
       ModelNames: this.options.ModelNames,
+      modelNamesPath: this.getModelNamesPath(),
     }
   }
 
+  getModelNamesPath() {
+    const kebabCaseContext = this.options.context
+      ? `${camelCaseToKebabCase(this.options.context)}/`
+      : ""
+    const kebabCaseModelNames = camelCaseToKebabCase(this.options.modelNames)
+    return kebabCaseContext + kebabCaseModelNames
+  }
+
   getTargetDirectory() {
-    const context = this.options.context ? `${this.options.context}/` : ""
-    return `app/${context}${this.options.modelNames}/components`
+    const kebabCaseModelName = camelCaseToKebabCase(this.options.modelNames)
+    const parent = this.options.parentModels
+      ? `${this.options.parentModels}/__parentModelParam__/`
+      : ""
+    return `app/${this.getModelNamesPath()}/pages/${parent}${kebabCaseModelName}`
   }
 }

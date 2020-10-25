@@ -3,13 +3,20 @@ import {flags} from "@oclif/command"
 import {log} from "@blitzjs/display"
 import {
   PageGenerator,
+  PagesGenerator,
   MutationGenerator,
+  MutationsGenerator,
   QueriesGenerator,
   FormGenerator,
   ModelGenerator,
   QueryGenerator,
+  TemplateGenerator,
+  Generator,
+  GeneratorOptions,
 } from "@blitzjs/generator"
 import {PromptAbortedError} from "../errors/prompt-aborted"
+import path from "path"
+import globby from "globby"
 
 const debug = require("debug")("blitz:generate")
 const pascalCase = (str: string) => require("camelcase")(str, {pascalCase: true})
@@ -21,12 +28,16 @@ const getIsTypescript = () =>
 enum ResourceType {
   All = "all",
   Crud = "crud",
+  Form = "form",
   Model = "model",
+  Mutation = "mutation",
   Mutations = "mutations",
+  Page = "page",
   Pages = "pages",
   Queries = "queries",
   Query = "query",
   Resource = "resource",
+  Template = "template",
 }
 
 interface Flags {
@@ -61,21 +72,68 @@ function ModelNames(input: string = "") {
   return pascalCase(pluralize(input))
 }
 
+function templateFromPath(p: string): TemplateMetadata<any> {
+  const {dir, name} = path.parse(p)
+  // gets the parent dir, which tells us if we need a special generator type
+  const {name: rawType} = path.parse(dir)
+  return {fullPath: p, name, generators: generatorMap[rawType as ResourceType]}
+}
+
+function getCustomTemplates() {
+  const allResourceTypesRegex = Object.keys(ResourceType)
+    .map((k) => (ResourceType as Record<string, string>)[k])
+    .join("|")
+  const specialTemplates = globby.sync([`templates/(${allResourceTypesRegex})/*`], {
+    onlyDirectories: true,
+  })
+  const genericTemplates = globby.sync([`templates/!(${allResourceTypesRegex})`], {
+    onlyDirectories: true,
+  })
+  return [...specialTemplates, ...genericTemplates].map(templateFromPath)
+}
+
+interface TemplateMetadata<T extends ResourceType, K extends any = typeof generatorMap[T]> {
+  fullPath: string
+  name: string
+  generators: K
+}
+
+interface GenericGeneratorOptions extends GeneratorOptions {
+  modelNames: string
+}
+
+class GenericGenerator extends Generator<GenericGeneratorOptions> {
+  sourceRoot = ""
+  prettierDisabled = true
+  async getTemplateValues() {
+    return this.options
+  }
+
+  getTargetDirectory() {
+    const context = this.options.context ? `${this.options.context}/` : ""
+    return `app/${context}`
+  }
+}
+
 const generatorMap = {
   [ResourceType.All]: [
     ModelGenerator,
-    PageGenerator,
+    PagesGenerator,
     FormGenerator,
     QueriesGenerator,
-    MutationGenerator,
+    MutationsGenerator,
   ],
-  [ResourceType.Crud]: [MutationGenerator, QueriesGenerator],
+  [ResourceType.Crud]: [MutationsGenerator, QueriesGenerator],
+  [ResourceType.Form]: [FormGenerator],
   [ResourceType.Model]: [ModelGenerator],
-  [ResourceType.Mutations]: [MutationGenerator],
-  [ResourceType.Pages]: [PageGenerator, FormGenerator],
+  [ResourceType.Mutation]: [MutationGenerator],
+  [ResourceType.Mutations]: [MutationsGenerator],
+  [ResourceType.Page]: [PageGenerator],
+  [ResourceType.Pages]: [PagesGenerator, FormGenerator],
   [ResourceType.Queries]: [QueriesGenerator],
   [ResourceType.Query]: [QueryGenerator],
-  [ResourceType.Resource]: [ModelGenerator, QueriesGenerator, MutationGenerator],
+  [ResourceType.Resource]: [ModelGenerator, QueriesGenerator, MutationsGenerator],
+  [ResourceType.Template]: [TemplateGenerator],
 }
 
 export class Generate extends Command {
@@ -86,8 +144,11 @@ export class Generate extends Command {
     {
       name: "type",
       required: true,
-      description: "What files to generate",
-      options: Object.keys(generatorMap).map((s) => s.toLowerCase()),
+      description: "What type of files to generate",
+      options: [
+        ...Object.keys(generatorMap).map((s) => s.toLowerCase()),
+        ...getCustomTemplates().map((t) => t.name.toLowerCase()),
+      ].sort(),
     },
     {
       name: "model",
@@ -145,10 +206,11 @@ export class Generate extends Command {
     completed:boolean:default[false] \\
     belongsTo:project?
     `,
-    `# Sometimes you want just a single query with no generated
-# logic. Generating "query" instead of "queries" will give you a more
-# customizable template.
-> blitz generate query getUserSession`,
+    `# Sometimes you want just a single file with no generated
+# logic. Generating a singular type (e.g. "query" instead of "queries")
+# will give you a more customizable template.
+> blitz generate query getUserSession
+> blitz generate page AdminHomePage`,
   ]
 
   async promptForTargetDirectory(paths: string[]): Promise<string> {
@@ -215,8 +277,12 @@ export class Generate extends Command {
     try {
       const {model, context} = this.getModelNameAndContext(args.model, flags.context)
       const singularRootContext = modelName(model)
+      const customTemplates = getCustomTemplates()
+      const customTemplateMeta = customTemplates.find((meta) => meta.name === args.type)
 
-      const generators = generatorMap[args.type]
+      const generators = customTemplateMeta
+        ? customTemplateMeta.generators || [GenericGenerator]
+        : generatorMap[args.type]
       for (const GeneratorClass of generators) {
         const generator = new GeneratorClass({
           destinationRoot: require("path").resolve(),
@@ -234,6 +300,9 @@ export class Generate extends Command {
           context: context,
           useTs: getIsTypescript(),
         })
+        if (customTemplateMeta) {
+          generator.sourceRoot = path.resolve(customTemplateMeta.fullPath)
+        }
         await generator.run()
       }
 
