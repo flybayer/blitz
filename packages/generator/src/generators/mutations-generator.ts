@@ -1,6 +1,5 @@
-import {join} from "path"
 import {Generator, GeneratorOptions} from "../generator"
-import {camelCaseToKebabCase} from "../utils/inflector"
+import {camelCaseToKebabCase, singleCamel} from "../utils/inflector"
 
 export interface MutationsGeneratorOptions extends GeneratorOptions {
   ModelName: string
@@ -11,11 +10,12 @@ export interface MutationsGeneratorOptions extends GeneratorOptions {
   parentModels?: string
   ParentModel?: string
   ParentModels?: string
+  extraArgs?: string[]
 }
 
 export class MutationsGenerator extends Generator<MutationsGeneratorOptions> {
   static subdirectory = "mutations"
-  sourceRoot = join(__dirname, "./templates/mutations")
+  sourceRoot = Generator.sourceRootFromTemplate("mutations")
 
   private getId(input: string = "") {
     if (!input) return input
@@ -25,6 +25,14 @@ export class MutationsGenerator extends Generator<MutationsGeneratorOptions> {
   private getParam(input: string = "") {
     if (!input) return input
     return `[${input}]`
+  }
+
+  private getZodTypeName(type: string = "") {
+    if (["string", "null", "undefined", "unknown", "void", "boolean"].includes(type)) {
+      return type
+    } else {
+      return type === "int" ? "number" : "any"
+    }
   }
 
   // eslint-disable-next-line require-await
@@ -42,6 +50,13 @@ export class MutationsGenerator extends Generator<MutationsGeneratorOptions> {
       modelNames: this.options.modelNames,
       ModelName: this.options.ModelName,
       ModelNames: this.options.ModelNames,
+      subTemplateValues: this.options.extraArgs?.map((arg: string) => {
+        const [valueName, typeName] = arg.split(":")
+        return {
+          attributeName: singleCamel(valueName),
+          zodTypeName: this.getZodTypeName(typeName),
+        }
+      }),
     }
   }
 
