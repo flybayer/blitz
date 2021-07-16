@@ -41,7 +41,7 @@ import { NextConfig } from '../next-server/server/config'
 import {
   buildPageExtensionRegex,
   convertPageFilePathToRoutePath,
-  isPageFile,
+  getIsPageFile,
   topLevelFoldersThatMayContainPages,
 } from '../build/utils'
 
@@ -229,7 +229,7 @@ export default class DevServer extends Server {
 
           if (
             accuracy === undefined ||
-            !isPageFile(relativePath) ||
+            !getIsPageFile(relativePath) ||
             !regexPageExtension.test(filePath)
           ) {
             continue

@@ -12,6 +12,24 @@ import {
   NextApiResponse,
   NextApiRequest,
   NextApiHandler,
+  DefaultCtx,
+  Ctx,
+  MiddlewareRequest,
+  MiddlewareResponse,
+  MiddlewareNext,
+  Middleware,
+  ConnectMiddleware,
+  Session,
+  PublicData,
+  EmptyPublicData,
+  IsAuthorizedArgs,
+  SessionModel,
+  SessionConfig,
+  SessionContext,
+  SessionContextBase,
+  AuthenticatedSessionContext,
+  ClientSession,
+  AuthenticatedClientSession,
   // @ts-ignore This path is generated at build time and conflicts otherwise
 } from '../dist/next-server/lib/utils'
 
@@ -21,7 +39,38 @@ import {
 } from '../dist/next-server/server/api-utils'
 
 // @ts-ignore This path is generated at build time and conflicts otherwise
+// export { PaginateArgs, ConnectMiddleware } from './dist/stdlib-server'
+
+// @ts-ignore This path is generated at build time and conflicts otherwise
 import next from '../dist/server/next'
+
+export default next
+
+export {
+  NextPageContext,
+  NextComponentType,
+  NextApiResponse,
+  NextApiRequest,
+  NextApiHandler,
+  DefaultCtx,
+  Ctx,
+  MiddlewareRequest,
+  MiddlewareResponse,
+  MiddlewareNext,
+  Middleware,
+  ConnectMiddleware,
+  Session,
+  PublicData,
+  EmptyPublicData,
+  IsAuthorizedArgs,
+  SessionModel,
+  SessionConfig,
+  SessionContext,
+  SessionContextBase,
+  AuthenticatedSessionContext,
+  ClientSession,
+  AuthenticatedClientSession,
+}
 
 // Extend the React types with missing properties
 declare module 'react' {
@@ -80,14 +129,6 @@ export type PageConfig = {
   env?: Array<string>
   unstable_runtimeJS?: false
   unstable_JsPreload?: false
-}
-
-export {
-  NextPageContext,
-  NextComponentType,
-  NextApiResponse,
-  NextApiRequest,
-  NextApiHandler,
 }
 
 export type PreviewData = string | false | object | undefined
@@ -174,5 +215,3 @@ export type InferGetServerSidePropsType<T> = T extends GetServerSideProps<
     ) => Promise<GetServerSidePropsResult<infer P>>
   ? P
   : never
-
-export default next

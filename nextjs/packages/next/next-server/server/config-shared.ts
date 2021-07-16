@@ -5,9 +5,34 @@ import os from 'os'
 import { join } from 'path'
 import { Header, Redirect, Rewrite } from '../../lib/load-custom-routes'
 import { imageConfigDefault } from './image-config'
-import { CONFIG_FILE } from '../lib/constants'
+import { CONFIG_FILE, PHASE_PRODUCTION_SERVER } from '../lib/constants'
 import { copy, remove } from 'fs-extra'
+import { Middleware } from '../../types'
 const debug = require('debug')('blitz:config')
+
+export async function loadConfigAtRuntime() {
+  if (!process.env.BLITZ_APP_DIR) {
+    throw new Error(
+      'Internal Blitz Error: process.env.BLITZ_APP_DIR is not set'
+    )
+  }
+  const userConfigModule = require(join(process.env.BLITZ_APP_DIR, CONFIG_FILE))
+  let userConfig = normalizeConfig(
+    PHASE_PRODUCTION_SERVER,
+    userConfigModule.default || userConfigModule
+  )
+  return userConfig
+}
+
+export function loadConfigProduction(pagesDir: string) {
+  // eslint-disable-next-line no-eval -- block webpack from following this module path
+  const userConfigModule = eval('require')(join(pagesDir, CONFIG_FILE))
+  let userConfig = normalizeConfig(
+    PHASE_PRODUCTION_SERVER,
+    userConfigModule.default || userConfigModule
+  )
+  return userConfig
+}
 
 export type DomainLocales = Array<{
   http?: true
@@ -38,6 +63,22 @@ export type NextConfig = { [key: string]: any } & {
   trailingSlash?: boolean
   webpack5?: false
   excludeDefaultMomentLocales?: boolean
+
+  // -- Blitz start
+  cli?: {
+    clearConsoleOnBlitzDev?: boolean
+    httpProxy?: string
+    httpsProxy?: string
+    noProxy?: string
+  }
+  log?: {
+    level: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal'
+  }
+  middleware?: Middleware[]
+  customServer?: {
+    hotReload?: boolean
+  }
+  // -- Blitz end
 
   future: {
     /**

@@ -78,6 +78,8 @@ describe("Dev command", () => {
             {name: "foo", children: [{name: "api", children: [{name: "foo.ts"}]}]},
           ],
         },
+        {name: "blitz.config.js"},
+        {name: "next.config.js"},
       ],
     })
   })

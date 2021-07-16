@@ -60,12 +60,23 @@ export function convertPageFilePathToRoutePath(filePath: string) {
   return filePath
     .replace(/^.*?[\\/]pages[\\/]/, '/')
     .replace(/^.*?[\\/]api[\\/]/, '/api/')
+    .replace(/^.*?[\\/]queries[\\/]/, '/api/rpc/')
+    .replace(/^.*?[\\/]mutations[\\/]/, '/api/rpc/')
+    .replace(/\.[^.]*$/, '')
 }
 
-export function isPageFile(filePathFromAppRoot: string) {
+export function getIsPageFile(filePathFromAppRoot: string) {
   return (
     /[\\/]pages[\\/]/.test(filePathFromAppRoot) ||
-    /[\\/]api[\\/]/.test(filePathFromAppRoot)
+    /[\\/]api[\\/]/.test(filePathFromAppRoot) ||
+    getIsRpcFile(filePathFromAppRoot)
+  )
+}
+
+export function getIsRpcFile(filePathFromAppRoot: string) {
+  return (
+    /[\\/]queries[\\/]/.test(filePathFromAppRoot) ||
+    /[\\/]mutations[\\/]/.test(filePathFromAppRoot)
   )
 }
 

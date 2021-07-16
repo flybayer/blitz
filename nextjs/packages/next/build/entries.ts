@@ -18,13 +18,13 @@ type PagesMapping = {
 
 export function createPagesMapping(
   pagePaths: string[],
-  extensions: string[]
+  pageExtensions: string[]
 ): PagesMapping {
   const previousPages: PagesMapping = {}
   const pages: PagesMapping = pagePaths.reduce(
     (result: PagesMapping, pagePath): PagesMapping => {
       let page = `${convertPageFilePathToRoutePath(pagePath)
-        .replace(new RegExp(`\\.+(${extensions.join('|')})$`), '')
+        .replace(new RegExp(`\\.+(${pageExtensions.join('|')})$`), '')
         .replace(/\\/g, '/')}`.replace(/\/index$/, '')
 
       let pageKey = page === '' ? '/' : page
@@ -68,13 +68,18 @@ type Entrypoints = {
   server: WebpackEntrypoints
 }
 
+interface EntrypointsCtx {
+  pagesDir: string
+}
+
 export function createEntrypoints(
   pages: PagesMapping,
   target: 'server' | 'serverless' | 'experimental-serverless-trace',
   buildId: string,
   previewMode: __ApiPreviewProps,
   config: NextConfig,
-  loadedEnvFiles: LoadedEnvFiles
+  loadedEnvFiles: LoadedEnvFiles,
+  { pagesDir }: EntrypointsCtx
 ): Entrypoints {
   const client: WebpackEntrypoints = {}
   const server: WebpackEntrypoints = {}
@@ -89,6 +94,7 @@ export function createEntrypoints(
     absoluteErrorPath: pages['/_error'],
     absolute404Path: pages['/404'] || '',
     distDir: DOT_NEXT_ALIAS,
+    pagesDir,
     buildId,
     assetPrefix: config.assetPrefix,
     generateEtags: config.generateEtags,
